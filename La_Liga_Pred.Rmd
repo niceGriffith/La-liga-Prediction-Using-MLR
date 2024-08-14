@@ -1,23 +1,31 @@
 ---
-title: "Using Multiple Linear Regression To Predict La-Liga Stadings"
+title: "Using Multiple Linear Regression To Predict La-Liga Standings"
 author: "Debaditya Chakraborty"
-date: "`r Sys.Date()`"
-output: html_document
+date: "2023-09-12"
+output: rmdformats::downcute
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE,message = FALSE)
 ```
 
-#Data Cleaning
+# Data Cleaning
+
+We Start with loading the data from the excel file , the file can be accessed from [here](https://github.com/niceGriffith/La-liga-Prediction-Using-MLR/blob/main/Project_updated.xlsx).  
+For this we use the packages `xlsx`(For .xlsx file handling),`dplyr` and`tidyverse` for data manipulation.
 ```{r}
 library(xlsx)
 library(dplyr)
 library(tidyverse)
 mk<-read.xlsx("Project_updated.xlsx",sheetIndex = 1)
+#Clearing subcategory related empty rows,
 mk<-mk[-1,]
+# Assigning correct column names
 colnames(mk)[4:6]<-c("Income","Expenditure","Gross")
+#Removing some Columns which won't be used
 mk<-mk[,-12:-10]
+#Applying an algorithm to replace the team name rows 
+## with NA team names with correct team names
 mk <- mk %>%
   # Create a group identifier based on the row number
   mutate(group = (row_number() - 1) %/% 5) %>%
@@ -28,13 +36,18 @@ mk <- mk %>%
   # Ungroup and remove the temporary group column
   ungroup() %>%
   select(-group)
-
+#Making data numeric
 mk <- mk %>% mutate(across(-2:-1,as.numeric))
+#Removing empty rows
 mk<-mk[-153:-136,]
 #Removing NA's
 fin_mk<-na.omit(mk)
 ```
+
 # Scatterplots
+
+Here we plot some scatterplot between different variables in the dataset to get how they are related.
+
 ```{r}
 par(mfrow=c(2,2))
 plot(fin_mk$Average.Age.of.Players,fin_mk$Points.Scored,xlab = "Average Age of players",ylab="Points Scored")
@@ -47,20 +60,25 @@ plot(fin_mk$Average.Age.of.Players,fin_mk$Previous.Standing,xlab="Average Age of
 plot(fin_mk$Previous.Standing,fin_mk$Manager.s.Years.of.experience,xlab="Previous Standing",ylab="Managers year of Experience")
 plot(fin_mk$Gross,fin_mk$Manager.s.Years.of.experience,xlab="Financial Situation",ylab="Managers year of Experience")
 plot(fin_mk$Previous.Standing,fin_mk$Gross,xlab="Previous Standing",ylab="Financial Situation")
-
-#Histo Of Points
-mk$Points.Scored%>%hist(main="Histogram of Points Scored")
-
-
 ```
 
+#  Histogram of Points Scored
+
 ```{r}
-#Correlation Matrix
+mk$Points.Scored%>%hist(main="Histogram of Points Scored")
+```
+
+# Correlation Matrix
+We plot the correlation matrix using the `corrplot` packages corrplot function which is used to calculate the correlation matrix, and this is displayed via a visualization. 
+```{r}
 mk_num<-fin_mk[,-2:-1]
 cor_mat<-cor(mk_num)
 corrplot::corrplot(cor_mat)
 ```
+
 # Modeling 
+
+Finally we model the data using a multiple linear regression model, we use the explanatory variables Average age of players,Managers Year of Experience,Expenditure and Previous Standing.    
 ```{r}
 model<-lm(Points.Scored~Average.Age.of.Players+Manager.s.Years.of.experience+Expenditure+Previous.Standing,fin_mk)
 kk<-round(predict(model),digits = 0)
@@ -68,7 +86,14 @@ df1<-data.frame(fin_mk$Team,kk)
 colnames(df1)<-c("Team","Points")
 summary(model)
 ```
+
+We can see that the R^2 value is particularly good,and we have to statistically significant explanatory variables in the model. Although this is a very overly simplified model but as a basis this looks decent.
+
 # Prediction
+
+Here the prediction is based on the average of the given data, i was too lazy to look for a 23-24 data ;__; 
+
+If you want you can definitely collect the data and use this code to check how the model aligns with last years situation.
 ``` {r}
 team_means <- df1 %>%
   group_by(Team) %>%
@@ -81,3 +106,5 @@ library(kableExtra)
 kable(standings,caption = "Predicted Standings")
 
 ```
+
+Thank you for reading.
